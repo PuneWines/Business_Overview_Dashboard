@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #0ea5e9;
+  --primary-dark: #0284c7;
+  --primary-light: #e0f2fe;
+  --bg: #f0f9ff;
+  --border: #bae6fd;
+}
+
+body {
+  background-color: #f0f9ff;
+  color: #0c4a6e;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 0.85rem;
+  min-height: 100vh;
+}
+
+.page-content {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(14,165,233,0.1);
+  border: 1px solid #bae6fd;
+  padding: 0.75rem;
+}
+
+.glass-effect {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(186,230,253,0.6);
+}
+
+.modal-backdrop {
+  background: rgba(12,74,110,0.3);
+  backdrop-filter: blur(4px);
+}
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Hide all scrollbars globally */
+*::-webkit-scrollbar { display: none; }
+* { -ms-overflow-style: none; scrollbar-width: none; }
+
+.hr-card {
+  @apply bg-white rounded-xl border border-sky-200 shadow-sm hover:shadow-md transition-shadow duration-300;
+}
+
+.hr-input {
+  @apply w-full px-3 py-1.5 rounded-lg border border-sky-300 focus:ring-2 focus:ring-sky-400 focus:border-transparent outline-none transition-all bg-white;
+}
+
+.hr-button-primary {
+  @apply bg-sky-500 hover:bg-sky-600 text-white font-medium py-1.5 px-3.5 rounded-lg transition-colors shadow-sm active:scale-95;
+}
+
+.hr-button-secondary {
+  @apply bg-white border border-sky-300 text-sky-700 hover:bg-sky-50 font-medium py-1.5 px-3.5 rounded-lg transition-colors;
+}
+
+table th, table td {
+  padding: 0.5rem 0.75rem !important;
+  text-align: center !important;
+}
+
+.space-y-6 > * + * { margin-top: 1rem !important; }
+.space-y-4 > * + * { margin-top: 0.75rem !important; }
