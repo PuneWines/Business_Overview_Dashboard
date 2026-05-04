@@ -2,13 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { CheckSquare, X, Clock, CheckCircle, Loader2, RotateCw, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-const STORES = [
-  { id: 'madhura', label: 'Madhura Snack' },
-  { id: 'balaji',  label: 'Balaji Sack' },
-  { id: 'vishal',  label: 'Vishal Snack' },
-  { id: 'kunal',   label: 'Kunal Ulwe' },
-  { id: 'friends', label: 'Friends Snack' },
-];
+// Dynamic Stores will be fetched from Master sheet
+
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-';
@@ -42,21 +37,43 @@ const PENDING_COLS = [
 const HISTORY_COLS = [
   ...PENDING_COLS,
   { key: 'actual1',          label: 'Actual 1' },
+  { key: 'resolvedBy',       label: 'Resolved By' },
   { key: 'resolutionStatus', label: 'Status' },
   { key: 'resolutionDate',   label: 'Resolve Date' },
   { key: 'summary',          label: 'Summary' },
 ];
 
-function ResolveModal({ row, onSave, onClose, loading }) {
+function ResolveModal({ row, onSave, onClose, loading, masterData }) {
   const [form, setForm] = useState({
     resolutionStatus: row.resolutionStatus || 'Solved',
     resolutionDate: row.resolutionDate || new Date().toISOString().split('T')[0],
     summary: row.summary || '',
+    resolvedBy: row.resolvedBy || '',
   });
   
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   
+  // Get resolver options for this store
+  const resolverOptions = useMemo(() => {
+    if (!masterData || !row.storeName) return [];
+    const target = row.storeName.trim().toLowerCase();
+    
+    // 1. Exact match
+    if (masterData[target]) return masterData[target].resolvers || [];
+    
+    // 2. Fuzzy match: Find key that contains target or is contained by target
+    const fuzzyKey = Object.keys(masterData).find(key => 
+      key.includes(target) || target.includes(key)
+    );
+    
+    return fuzzyKey ? masterData[fuzzyKey].resolvers || [] : [];
+  }, [masterData, row.storeName]);
+
   const handleSave = () => {
+    if (!form.resolvedBy) {
+      toast.error("Please select who resolved this");
+      return;
+    }
     // Current date/time for 'Actual 1' field in DD/MM/YYYY HH:mm:ss format
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
@@ -81,7 +98,7 @@ function ResolveModal({ row, onSave, onClose, loading }) {
           <div className="bg-emerald-50 rounded-lg p-3 text-sm">
             <p className="font-semibold text-emerald-800">{row.complaintId}</p>
             <p className="text-emerald-600 text-xs">{row.customerName} | Assigned to: {row.assignedTo || '-'}</p>
-            <p className="text-emerald-500 text-[10px] mt-1">Planned 1: {row.planned1 || '-'}</p>
+            <p className="text-emerald-500 text-[10px] mt-1">Store: {row.storeName} | Planned 1: {row.planned1 || '-'}</p>
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-2">Status</label>
@@ -95,6 +112,20 @@ function ResolveModal({ row, onSave, onClose, loading }) {
                 </button>
               ))}
             </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Resolved By</label>
+            <select 
+              value={form.resolvedBy} 
+              onChange={e => set('resolvedBy', e.target.value)}
+              disabled={loading}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+            >
+              <option value="">Select Resolver</option>
+              {resolverOptions.map((name, i) => (
+                <option key={i} value={name}>{name}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Resolve Date</label>
@@ -171,6 +202,7 @@ function DataTable({ cols, rows, actionCol, loading }) {
 
 export default function ComplainResolution() {
   const [allData, setAllData] = useState([]);
+  const [masterData, setMasterData] = useState({});
   const [loading, setLoading] = useState(false);
   const [resolveModal, setResolveModal] = useState(null);
   const [tab, setTab]               = useState('pending');
@@ -184,8 +216,56 @@ export default function ComplainResolution() {
     if (!sheetUrl) return;
     setLoading(true);
     try {
-      const resp = await fetch(`${sheetUrl}?sheet=Feedback`);
-      const result = await resp.json();
+      // Fetch Feedback and Master data in parallel
+      const [resp, masterResp] = await Promise.all([
+        fetch(`${sheetUrl}?sheet=Feedback`),
+        fetch(`${sheetUrl}?sheet=Master`)
+      ]);
+
+      const [result, masterResult] = await Promise.all([
+        resp.json(),
+        masterResp.json()
+      ]);
+
+      if (masterResult.success && masterResult.data) {
+        // Master Sheet: A=Store, B=Assignee, C=Resolver
+        // Data starts from index 1 (Row 2)
+        const mappings = {};
+        masterResult.data.slice(1).forEach(row => {
+          const store = row[0]?.toString().trim().toLowerCase();
+          const assigneesRaw = row[1]?.toString().trim();
+          const resolversRaw = row[2]?.toString().trim();
+
+          if (store) {
+            if (!mappings[store]) mappings[store] = { assignees: new Set(), resolvers: new Set() };
+            
+            if (assigneesRaw) {
+              assigneesRaw.split(',').forEach(name => {
+                const trimmedName = name.trim();
+                if (trimmedName) mappings[store].assignees.add(trimmedName);
+              });
+            }
+            
+            if (resolversRaw) {
+              resolversRaw.split(',').forEach(name => {
+                const trimmedName = name.trim();
+                if (trimmedName) mappings[store].resolvers.add(trimmedName);
+              });
+            }
+          }
+        });
+
+        // Convert Sets back to sorted Arrays
+        const processed = {};
+        Object.keys(mappings).forEach(store => {
+          processed[store] = {
+            assignees: Array.from(mappings[store].assignees).sort(),
+            resolvers: Array.from(mappings[store].resolvers).sort()
+          };
+        });
+        setMasterData(processed);
+      }
+
       if (result.success && result.data) {
         // Headers are on Row 6. Data starts Row 7.
         const rawRows = result.data.slice(6);
@@ -208,6 +288,7 @@ export default function ComplainResolution() {
             remarks: row[15],
             planned1: row[16],
             actual1: row[17],
+            resolvedBy: row[18],
             resolutionStatus: row[19],
             resolutionDate: row[20],
             summary: row[21],
@@ -224,7 +305,18 @@ export default function ComplainResolution() {
   }, [sheetUrl]);
 
   useEffect(() => {
-    fetchData();
+    fetchData().then(() => {
+      // Handle ID parameter from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const idParam = urlParams.get('id');
+      if (idParam) {
+        setAllData(currentData => {
+          const match = currentData.find(d => d.complaintId === idParam);
+          if (match) setResolveModal(match);
+          return currentData;
+        });
+      }
+    });
   }, [fetchData]);
 
   const pending = useMemo(() => allData.filter(d => d.planned1 && !d.actual1), [allData]);
@@ -257,6 +349,7 @@ export default function ComplainResolution() {
       // Google Sheets columns are 1-indexed: R=18, T=20, U=21, V=22
       const updates = [
         { col: 18, val: entry.actual1 },
+        { col: 19, val: entry.resolvedBy },
         { col: 20, val: entry.resolutionStatus },
         { col: 21, val: entry.resolutionDate },
         { col: 22, val: entry.summary }
@@ -299,7 +392,9 @@ export default function ComplainResolution() {
         <select value={filterStore} onChange={(e) => setFilterStore(e.target.value)}
           className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-400 min-w-[120px]">
           <option value="">All Stores</option>
-          {STORES.map(s => <option key={s.id} value={s.label}>{s.label}</option>)}
+          {Object.keys(masterData).sort().map((s, i) => (
+            <option key={i} value={s}>{s.toUpperCase()}</option>
+          ))}
         </select>
         <button onClick={fetchData} disabled={loading} className="flex items-center gap-1.5 bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50">
           {loading ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} />}
@@ -377,7 +472,7 @@ export default function ComplainResolution() {
         )}
       </div>
 
-      {resolveModal && <ResolveModal row={resolveModal} loading={loading} onSave={handleUpdate} onClose={() => setResolveModal(null)} />}
+      {resolveModal && <ResolveModal row={resolveModal} loading={loading} masterData={masterData} onSave={handleUpdate} onClose={() => setResolveModal(null)} />}
     </div>
   );
 }

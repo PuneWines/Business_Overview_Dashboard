@@ -9,7 +9,7 @@ const CHECKBOX_FIELDS = [
   'Card Swipe Machine + Charger & UPI Sound Box + Charger',
   'Sale Point 1', 'Sale Point 2', 'Sale Point 3',
   'Main Server Computer', 'Billing Printer', 'Excise Printer',
-  'CCTV Camera TV Remote', 'Alarm System 1', 'Alarm System 2', 'Fire Cylinder',
+  'CCTV Camera TV Remote', 'Alarm System (Sutter & Smoke)', 'Fire Cylinder',
   'Fridge Steel', 'Fridge Budwiser', 'Fridge Kingfisher',
   'Water Jar', 'Cleaning Item (Mop, Bucket & Cleaning Liquids)',
   'Main Wine Shop Brand', 'Window Display',
@@ -90,9 +90,9 @@ export default function ShopVisit() {
               shopName: row[3],
               handoverByName: row[4],
               takeoverByName: row[5],
-              lightingDamage: row[58],
-              wholesalePartyAmount: row[59],
-              wholesaleImageLink: row[60],
+              lightingDamage: row[57],
+              wholesalePartyAmount: row[58],
+              wholesaleImageLink: row[59],
             };
             CHECKBOX_FIELDS.forEach((f, fi) => {
               v[f] = row[6 + fi];
@@ -280,7 +280,7 @@ export default function ShopVisit() {
                   <td className="px-3 py-1.5 text-gray-700 whitespace-nowrap">{v.wholesalePartyAmount ? `₹${v.wholesalePartyAmount}` : '-'}</td>
                   <td className="px-3 py-1.5">
                     {v.wholesaleImageLink
-                      ? <a href={v.wholesaleImageLink} target="_blank" rel="noopener noreferrer" className="text-sky-600 underline text-[10px]">View</a>
+                      ? <a href={v.wholesaleImageLink} target="_blank" rel="noopener noreferrer" className="text-sky-600 underline text-[10px] font-medium">View Image</a>
                       : <span className="text-gray-400">-</span>}
                   </td>
                 </tr>

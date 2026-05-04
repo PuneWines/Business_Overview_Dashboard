@@ -2,13 +2,8 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { MessageSquare, Plus, X, ChevronLeft, ChevronRight, Loader2, RotateCw, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-const STORES = [
-  { id: 'madhura', label: 'Madhura Snack', color: 'from-purple-500 to-purple-700', light: 'bg-purple-50 border-purple-200 text-purple-700', icon: '🍷' },
-  { id: 'balaji',  label: 'Balaji Sack',   color: 'from-blue-500 to-blue-700',   light: 'bg-blue-50 border-blue-200 text-blue-700',   icon: '🍾' },
-  { id: 'vishal',  label: 'Vishal Snack',  color: 'from-green-500 to-green-700', light: 'bg-green-50 border-green-200 text-green-700', icon: '🥂' },
-  { id: 'kunal',   label: 'Kunal Ulwe',    color: 'from-orange-500 to-orange-700', light: 'bg-orange-50 border-orange-200 text-orange-700', icon: '🍻' },
-  { id: 'friends', label: 'Friends Snack', color: 'from-pink-500 to-pink-700',   light: 'bg-pink-50 border-pink-200 text-pink-700',   icon: '🥃' },
-];
+// Dynamic Stores will be fetched from Master sheet
+
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-';
@@ -41,7 +36,7 @@ const TABLE_HEADERS = [
 
 const RATING_OPTIONS = ['Excellent', 'Good', 'Average', 'Poor'];
 
-function FeedbackForm({ onSave, onCancel, defaultStoreId }) {
+function FeedbackForm({ onSave, onCancel, defaultStoreId, stores }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     storeId: defaultStoreId || '',
@@ -51,9 +46,13 @@ function FeedbackForm({ onSave, onCancel, defaultStoreId }) {
     beerChilled: '', staffBehaviour: '', suggestion: '',
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const storeName = STORES.find(s => s.id === form.storeId)?.label || '';
+  const storeName = form.storeId; // In dynamic mode, ID is the Name
 
   const handleSave = () => {
+    if (!form.storeId) {
+      toast.error("Please select a store");
+      return;
+    }
     onSave({ ...form, storeName });
   };
 
@@ -77,7 +76,7 @@ function FeedbackForm({ onSave, onCancel, defaultStoreId }) {
             <select value={form.storeId} onChange={e => set('storeId', e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400">
               <option value="">-- Select Store --</option>
-              {STORES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+              {stores.map((s, i) => <option key={i} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
@@ -165,6 +164,7 @@ function FeedbackForm({ onSave, onCancel, defaultStoreId }) {
 
 export default function CustomerFeedback() {
   const [allData, setAllData] = useState([]);
+  const [masterStores, setMasterStores] = useState([]);
   const [showModal, setShowModal]     = useState(false);
   const [search, setSearch]           = useState('');
   const [filterDate, setFilterDate]   = useState('');
@@ -180,16 +180,21 @@ export default function CustomerFeedback() {
     }
     setLoading(true);
     try {
-      const url = `${sheetUrl}?sheet=Feedback`;
-      console.log("Fetching feedback from:", url);
-      const resp = await fetch(url);
+      // Parallel fetch Feedback and Master
+      const [resp, masterResp] = await Promise.all([
+        fetch(`${sheetUrl}?sheet=Feedback`),
+        fetch(`${sheetUrl}?sheet=Master`)
+      ]);
       
-      if (!resp.ok) {
-        throw new Error(`HTTP error! status: ${resp.status}`);
+      const [result, masterResult] = await Promise.all([
+        resp.json(),
+        masterResp.json()
+      ]);
+
+      if (masterResult.success && masterResult.data) {
+        const stores = [...new Set(masterResult.data.slice(1).map(r => r[0]?.toString().trim()))].filter(Boolean).sort();
+        setMasterStores(stores);
       }
-      
-      const result = await resp.json();
-      console.log("Feedback fetch result:", result);
 
       if (result.success && result.data) {
         // Headers are on Row 6 (Index 5). Data starts Row 7 (Index 6).
@@ -237,12 +242,9 @@ export default function CustomerFeedback() {
       const now = new Date();
       const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
       
-      // Column Mapping for A-J (10 columns)
-      // A: Timestamp, B: Complaint ID (backend generated), C: Store Name, D: Customer Name, E: Contact No, 
-      // F: Feedback Date, G: Preferred Brand, H: Beer Chilled, I: Staff Behaviour, J: Suggestion
       const rowData = [
         timestamp,
-        "", // Placeholder for Complaint ID (Backend generates this)
+        "", 
         entry.storeName,
         entry.customerName,
         entry.contactNo,
@@ -262,7 +264,37 @@ export default function CustomerFeedback() {
       await fetch(sheetUrl, { method: 'POST', mode: 'no-cors', body: params });
       toast.success("Feedback submitted successfully");
       setShowModal(false);
-      setTimeout(fetchData, 1500);
+      
+      // Post Link to Sheet Logic
+      setTimeout(async () => {
+        try {
+          const resp = await fetch(`${sheetUrl}?sheet=Feedback`);
+          const result = await resp.json();
+          if (result.success && result.data) {
+            const rawRows = result.data.slice(6);
+            const latestIndex = rawRows.length + 6; // Row index in sheet
+            const latest = rawRows[rawRows.length - 1];
+            const complaintId = latest[1];
+            
+            const reactBaseUrl = window.location.origin;
+            const completeTaskLink = `${reactBaseUrl}/assigned-complain?id=${complaintId}`;
+            
+            // Update Column X (24) with the link
+            const updateParams = new URLSearchParams({
+              action: 'updateCell',
+              sheetName: 'Feedback',
+              rowIndex: latestIndex.toString(),
+              columnIndex: '24',
+              value: completeTaskLink
+            });
+            await fetch(sheetUrl, { method: 'POST', mode: 'no-cors', body: updateParams });
+          }
+        } catch (err) {
+          console.error("Link update failed:", err);
+        }
+        fetchData();
+      }, 2000);
+
     } catch (err) {
       toast.error("Failed to save feedback");
     } finally {
@@ -302,7 +334,7 @@ export default function CustomerFeedback() {
         <select value={filterStore} onChange={(e) => setFilterStore(e.target.value)}
           className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-400">
           <option value="">All Stores</option>
-          {STORES.map(s => <option key={s.id} value={s.label}>{s.label}</option>)}
+          {masterStores.map((s, i) => <option key={i} value={s}>{s}</option>)}
         </select>
 
         <button onClick={fetchData} disabled={loading} className="flex items-center gap-1.5 bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50">
@@ -391,7 +423,7 @@ export default function CustomerFeedback() {
               <button onClick={() => setShowModal(false)} className="text-white/80 hover:text-white" disabled={loading}><X size={20} /></button>
             </div>
             <div className={loading ? "opacity-50 pointer-events-none" : ""}>
-              <FeedbackForm onSave={handleSave} onCancel={() => setShowModal(false)} defaultStoreId="" />
+              <FeedbackForm onSave={handleSave} onCancel={() => setShowModal(false)} defaultStoreId="" stores={masterStores} />
             </div>
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center bg-white/20">
