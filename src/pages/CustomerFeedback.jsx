@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { MessageSquare, Plus, X, ChevronLeft, ChevronRight, Loader2, RotateCw, Search } from 'lucide-react';
+import { MessageSquare, Plus, X, ChevronLeft, ChevronRight, Loader2, RotateCw, Search, Wine } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 // Dynamic Stores will be fetched from Master sheet
@@ -162,7 +162,47 @@ function FeedbackForm({ onSave, onCancel, defaultStoreId, stores }) {
   );
 }
 
-export default function CustomerFeedback() {
+const WelcomeSplash = ({ isFading }) => (
+  <div className={`fixed inset-0 z-[100] bg-[#1a0f0f] flex flex-col items-center justify-center text-center px-6 transition-all duration-1000 ${isFading ? 'opacity-0 scale-110' : 'opacity-100'}`}>
+    <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/dark-leather.png')]" />
+    <div className="animate-reveal space-y-8 relative z-10">
+      <div className="relative mx-auto w-32 h-32">
+        <div className="absolute inset-0 bg-[#800020] rounded-full blur-2xl opacity-40 animate-pulse" />
+        <div className="relative w-32 h-32 bg-gradient-to-br from-[#800020] to-[#4a0808] rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(128,0,32,0.5)] border-2 border-[#D4AF37]/30 group hover:border-[#D4AF37]/60 transition-colors">
+          <Wine size={60} className="text-[#D4AF37] transform transition-transform group-hover:scale-110" />
+        </div>
+      </div>
+      
+      <div className="space-y-4">
+        <h1 className="text-3xl font-serif text-[#D4AF37]/80 tracking-[0.3em] uppercase opacity-0 animate-reveal [animation-delay:400ms]">
+          Welcome to
+        </h1>
+        <div className="space-y-1">
+          <h2 className="text-6xl font-serif font-black text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] tracking-tight opacity-0 animate-reveal [animation-delay:600ms]">
+            PUNE WINES
+          </h2>
+        </div>
+      </div>
+      
+      <div className="flex items-center justify-center gap-4 opacity-0 animate-reveal [animation-delay:1000ms]">
+        <div className="h-[1px] w-12 bg-gradient-to-r from-transparent to-[#D4AF37]" />
+        <p className="text-[#fdf5e6]/50 font-medium text-[10px] tracking-[0.4em] uppercase">
+          Est. Since 1995
+        </p>
+        <div className="h-[1px] w-12 bg-gradient-to-l from-transparent to-[#D4AF37]" />
+      </div>
+      
+      <div className="pt-8 opacity-0 animate-reveal [animation-delay:1200ms]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-1 h-12 bg-gradient-to-b from-[#D4AF37] to-transparent animate-bounce" />
+          <p className="text-[#D4AF37]/40 text-[9px] font-bold tracking-widest uppercase">Initializing Premium Experience</p>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+export default function CustomerFeedback({ isPublic = false }) {
   const [allData, setAllData] = useState([]);
   const [masterStores, setMasterStores] = useState([]);
   const [showModal, setShowModal]     = useState(false);
@@ -170,6 +210,9 @@ export default function CustomerFeedback() {
   const [filterDate, setFilterDate]   = useState('');
   const [filterStore, setFilterStore] = useState('');
   const [loading, setLoading]         = useState(false);
+  const [showSplash, setShowSplash]   = useState(false);
+  const [isSplashFading, setIsSplashFading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const sheetUrl = import.meta.env.VITE_FEEDBACK_GOOGLE_SHEET_URL;
 
@@ -229,7 +272,25 @@ export default function CustomerFeedback() {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    // Auto-open modal or splash if action=add or welcome=true is in URL or if it's the public page
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasAdd = urlParams.get('action') === 'add' || isPublic;
+    const hasWelcome = urlParams.get('welcome') === 'true' || isPublic;
+
+    if (hasWelcome) {
+      setShowSplash(true);
+      setTimeout(() => {
+        setIsSplashFading(true);
+        setTimeout(() => {
+          setShowSplash(false);
+          setIsSplashFading(false);
+          if (hasAdd) setShowModal(true);
+        }, 1000);
+      }, 2500);
+    } else if (hasAdd) {
+      setShowModal(true);
+    }
+  }, [fetchData, isPublic]);
 
   const handleSave = async (entry) => {
     if (!sheetUrl) {
@@ -265,7 +326,13 @@ export default function CustomerFeedback() {
       toast.success("Feedback submitted successfully");
       setShowModal(false);
       
-      // Post Link to Sheet Logic
+      if (isPublic) {
+        setIsSubmitted(true);
+        setLoading(false);
+        return;
+      }
+      
+      // Post Link to Sheet Logic (Only for Admin version to generate links)
       setTimeout(async () => {
         try {
           const resp = await fetch(`${sheetUrl}?sheet=Feedback`);
@@ -278,21 +345,36 @@ export default function CustomerFeedback() {
             
             const reactBaseUrl = window.location.origin;
             const completeTaskLink = `${reactBaseUrl}/assigned-complain?id=${complaintId}`;
+            const resolveTaskLink = `${reactBaseUrl}/complain-resolution?id=${complaintId}`;
             
-            // Update Column X (24) with the link
-            const updateParams = new URLSearchParams({
+            // 1. Update Column Y (25) with Assign Link
+            const updateParamsY = new URLSearchParams({
               action: 'updateCell',
               sheetName: 'Feedback',
               rowIndex: latestIndex.toString(),
-              columnIndex: '24',
+              columnIndex: '25',
               value: completeTaskLink
             });
-            await fetch(sheetUrl, { method: 'POST', mode: 'no-cors', body: updateParams });
+
+            // 2. Update Column Z (26) with Resolve Link
+            const updateParamsZ = new URLSearchParams({
+              action: 'updateCell',
+              sheetName: 'Feedback',
+              rowIndex: latestIndex.toString(),
+              columnIndex: '26',
+              value: resolveTaskLink
+            });
+
+            await Promise.all([
+              fetch(sheetUrl, { method: 'POST', mode: 'no-cors', body: updateParamsY }),
+              fetch(sheetUrl, { method: 'POST', mode: 'no-cors', body: updateParamsZ })
+            ]);
+            
+            fetchData();
           }
-        } catch (err) {
-          console.error("Link update failed:", err);
+        } catch (linkErr) {
+          console.error("Error posting links:", linkErr);
         }
-        fetchData();
       }, 2000);
 
     } catch (err) {
@@ -317,6 +399,61 @@ export default function CustomerFeedback() {
     }
     return data;
   }, [allData, search, filterDate, filterStore]);
+
+  if (isPublic) {
+    return (
+      <div className="min-h-screen bg-[#fdf5e6] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/dark-leather.png')] opacity-5 pointer-events-none" />
+        
+        {isSubmitted ? (
+          <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full text-center space-y-6 border-2 border-[#D4AF37]/20 relative z-10 animate-reveal">
+            <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
+              <MessageSquare size={40} className="text-emerald-600" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-3xl font-serif font-bold text-gray-800">Thank You!</h2>
+              <p className="text-gray-500 font-medium italic">We appreciate your valuable feedback.</p>
+            </div>
+            <div className="h-[2px] w-16 bg-[#D4AF37] mx-auto" />
+            <p className="text-sm text-gray-400">Your response has been recorded successfully.</p>
+          </div>
+        ) : (
+          <div className="w-full max-w-2xl relative z-10 animate-reveal">
+            <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#D4AF37]/10">
+              <div className="px-8 py-6 bg-gradient-to-r from-[#1a0f0f] to-[#4a0808] flex items-center justify-between border-b-2 border-[#D4AF37]">
+                <div className="flex items-center gap-3">
+                  <Wine className="text-[#D4AF37]" size={28} />
+                  <div>
+                    <h2 className="text-white font-serif font-bold text-xl tracking-tight">PUNE WINES</h2>
+                    <p className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-widest">Customer Feedback Form</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white">
+                <FeedbackForm 
+                  onSave={handleSave} 
+                  onCancel={() => {}} 
+                  defaultStoreId="" 
+                  stores={masterStores} 
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {loading && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1a0f0f]/40 backdrop-blur-sm">
+            <div className="bg-white p-6 rounded-3xl shadow-2xl flex flex-col items-center gap-4">
+              <Loader2 className="animate-spin text-[#800020]" size={40} />
+              <p className="text-[#800020] font-bold text-sm tracking-widest uppercase">Submitting...</p>
+            </div>
+          </div>
+        )}
+
+        {showSplash && <WelcomeSplash isFading={isSplashFading} />}
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 h-full flex flex-col gap-4">
@@ -351,7 +488,7 @@ export default function CustomerFeedback() {
 
       {/* Desktop Table */}
       <div className="hidden md:flex bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex-col" style={{ maxHeight: '530px' }}>
-        <div className="overflow-auto flex-1">
+        <div className="overflow-auto flex-1 scrollbar-hide">
           <table className="text-xs border-separate" style={{ borderSpacing: 0, minWidth: '1400px' }}>
             <thead className="bg-gray-50">
               <tr>
@@ -393,7 +530,7 @@ export default function CustomerFeedback() {
       </div>
 
       {/* Mobile Cards */}
-      <div className="md:hidden space-y-3">
+      <div className="md:hidden space-y-3 overflow-auto flex-1 scrollbar-hide">
         {loading && <div className="flex justify-center py-8"><Loader2 className="animate-spin text-sky-500" /></div>}
         {!loading && tableData.length === 0 && <p className="text-center py-8 text-gray-400 text-sm">No feedback records found</p>}
         {!loading && tableData.map((row, idx) => (
@@ -414,10 +551,10 @@ export default function CustomerFeedback() {
         ))}
       </div>
 
-      {/* Add Feedback Modal */}
+      {/* Add Feedback Modal (Admin) */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg relative overflow-hidden">
             <div className="px-6 py-4 bg-sky-500 rounded-t-2xl flex items-center justify-between sticky top-0 z-10">
               <h2 className="text-white font-bold text-base">Add Customer Feedback</h2>
               <button onClick={() => setShowModal(false)} className="text-white/80 hover:text-white" disabled={loading}><X size={20} /></button>
@@ -436,6 +573,7 @@ export default function CustomerFeedback() {
           </div>
         </div>
       )}
+      {showSplash && <WelcomeSplash isFading={isSplashFading} />}
     </div>
   );
 }

@@ -31,6 +31,9 @@ function App() {
         <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
         <Routes>
           <Route path="/login" element={<Login />} />
+          
+          {/* Public Feedback Route */}
+          <Route path="/feedback" element={<CustomerFeedback isPublic={true} />} />
 
           <Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />

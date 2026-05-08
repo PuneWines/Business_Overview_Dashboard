@@ -350,7 +350,7 @@ export default function AssignedComplain() {
         action: 'updateCell',
         sheetName: 'Feedback',
         rowIndex: entry.rowIndex.toString(),
-        columnIndex: '25',
+        columnIndex: '26',
         value: resolveComplaintLink
       });
       await fetch(sheetUrl, { method: 'POST', mode: 'no-cors', body: linkParams });
