@@ -20,7 +20,7 @@ export default function HelpTicket() {
   const [search, setSearch] = useState('');
   const [filterShop, setFilterShop] = useState('');
 
-  const sheetUrl = import.meta.env['VITE_HELP-TICKET_GOOGLE_SHEET_URL'];
+  const sheetUrl = import.meta.env['VITE_HELP_TICKET_GOOGLE_SHEET_URL'];
 
   const fetchData = useCallback(async () => {
     if (!sheetUrl) {

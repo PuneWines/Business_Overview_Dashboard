@@ -24,7 +24,7 @@ export default function TraderInvoices() {
   const [search, setSearch] = useState('');
   const [filterTrader, setFilterTrader] = useState('');
 
-  const sheetUrl = import.meta.env['VITE_TRADER-INVOICES_GOOGLE_SHEET_URL'];
+  const sheetUrl = import.meta.env['VITE_TRADER_INVOICES_GOOGLE_SHEET_URL'];
 
   const fetchData = useCallback(async () => {
     if (!sheetUrl) {
