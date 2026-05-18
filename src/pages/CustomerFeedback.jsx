@@ -36,7 +36,7 @@ const TABLE_HEADERS = [
 
 const RATING_OPTIONS = ['Excellent', 'Good', 'Average', 'Poor'];
 
-function FeedbackForm({ onSave, onCancel, defaultStoreId, stores }) {
+function FeedbackForm({ onSave, onCancel, defaultStoreId, stores, isPublic = false }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     storeId: defaultStoreId || '',
@@ -57,13 +57,13 @@ function FeedbackForm({ onSave, onCancel, defaultStoreId, stores }) {
   };
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="px-4 py-5 sm:p-6 space-y-5">
       {/* Step indicator */}
       <div className="flex items-center gap-2">
         {[1,2,3].map(s => (
           <React.Fragment key={s}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= s ? 'bg-sky-500 text-white' : 'bg-gray-200 text-gray-500'}`}>{s}</div>
-            {s < 3 && <div className={`flex-1 h-1 rounded ${step > s ? 'bg-sky-500' : 'bg-gray-200'}`} />}
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${step >= s ? 'bg-[#800020] text-[#D4AF37]' : 'bg-gray-200 text-gray-500'}`}>{s}</div>
+            {s < 3 && <div className={`flex-1 h-1 rounded ${step > s ? 'bg-[#800020]' : 'bg-gray-200'}`} />}
           </React.Fragment>
         ))}
       </div>
@@ -72,53 +72,53 @@ function FeedbackForm({ onSave, onCancel, defaultStoreId, stores }) {
         <div className="space-y-4">
           <h3 className="font-semibold text-gray-800 text-sm">Step 1: Store & Customer Info</h3>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Select Store</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Select Store / दुकान चुनें</label>
             <select value={form.storeId} onChange={e => set('storeId', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400">
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#800020] appearance-none">
               <option value="">-- Select Store --</option>
               {stores.map((s, i) => <option key={i} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Customer Name / ग्राहक नाम</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Customer Name / ग्राहक नाम</label>
             <input value={form.customerName} onChange={e => set('customerName', e.target.value)}
-              placeholder="Enter customer name"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
+              placeholder="Enter customer name" type="text" inputMode="text" autoComplete="name"
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#800020]" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Contact No / मोबाइल नंबर</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Contact No / मोबाइल नंबर</label>
             <input value={form.contactNo} onChange={e => set('contactNo', e.target.value)}
-              placeholder="Enter mobile number"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
+              placeholder="Enter mobile number" type="tel" inputMode="numeric" autoComplete="tel"
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#800020]" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Feedback Date</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Feedback Date</label>
             <input type="date" value={form.feedbackDate} onChange={e => set('feedbackDate', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#800020]" />
           </div>
         </div>
       )}
 
       {step === 2 && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <h3 className="font-semibold text-gray-800 text-sm">Step 2: Feedback Questions</h3>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-2">Did You Receive Your Preferred Brand? (क्या आपको आपकी पसंद के अनुसार ब्रांड दिया गया?)</label>
-            <div className="flex gap-2">
+            <label className="block text-xs font-semibold text-gray-600 mb-3 leading-relaxed">Did You Receive Your Preferred Brand?<br/><span className="text-gray-400 font-normal">(क्या आपको आपकी पसंद के अनुसार ब्रांड दिया गया?)</span></label>
+            <div className="grid grid-cols-2 gap-3">
               {['Yes / हाँ', 'No / नहीं'].map(opt => (
                 <button key={opt} type="button" onClick={() => set('preferredBrand', opt)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${form.preferredBrand === opt ? 'bg-sky-500 text-white border-sky-500' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
+                  className={`py-3 rounded-xl text-sm font-semibold border-2 transition-all active:scale-95 ${form.preferredBrand === opt ? 'bg-[#800020] text-[#D4AF37] border-[#800020] shadow-md' : 'bg-white text-gray-600 border-gray-200'}`}>
                   {opt}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-2">Was the beer chilled enough for you? (क्या बीयर आपके लिए पर्याप्त ठंडी थी?)</label>
-            <div className="flex gap-2">
+            <label className="block text-xs font-semibold text-gray-600 mb-3 leading-relaxed">Was the beer chilled enough?<br/><span className="text-gray-400 font-normal">(क्या बीयर आपके लिए पर्याप्त ठंडी थी?)</span></label>
+            <div className="grid grid-cols-2 gap-3">
               {['Yes / हाँ', 'No / नहीं'].map(opt => (
                 <button key={opt} type="button" onClick={() => set('beerChilled', opt)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${form.beerChilled === opt ? 'bg-sky-500 text-white border-sky-500' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
+                  className={`py-3 rounded-xl text-sm font-semibold border-2 transition-all active:scale-95 ${form.beerChilled === opt ? 'bg-[#800020] text-[#D4AF37] border-[#800020] shadow-md' : 'bg-white text-gray-600 border-gray-200'}`}>
                   {opt}
                 </button>
               ))}
@@ -128,34 +128,37 @@ function FeedbackForm({ onSave, onCancel, defaultStoreId, stores }) {
       )}
 
       {step === 3 && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <h3 className="font-semibold text-gray-800 text-sm">Step 3: Staff & Suggestions</h3>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-2">Staff Behaviour / स्टाफ का व्यवहार</label>
-            <div className="grid grid-cols-2 gap-2">
+            <label className="block text-xs font-semibold text-gray-600 mb-3">Staff Behaviour / स्टाफ का व्यवहार</label>
+            <div className="grid grid-cols-2 gap-3">
               {RATING_OPTIONS.map(opt => (
                 <button key={opt} type="button" onClick={() => set('staffBehaviour', opt)}
-                  className={`py-2 rounded-lg text-sm font-medium border transition-colors ${form.staffBehaviour === opt ? 'bg-sky-500 text-white border-sky-500' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}>
+                  className={`py-3 rounded-xl text-sm font-semibold border-2 transition-all active:scale-95 ${form.staffBehaviour === opt ? 'bg-[#800020] text-[#D4AF37] border-[#800020] shadow-md' : 'bg-white text-gray-600 border-gray-200'}`}>
                   {opt}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Suggestion / Improvement (सुझाव / सुधार)</label>
-            <textarea value={form.suggestion} onChange={e => set('suggestion', e.target.value)} rows={3}
+            <label className="block text-xs font-semibold text-gray-600 mb-1.5">Suggestion / Improvement (सुझाव / सुधार)</label>
+            <textarea value={form.suggestion} onChange={e => set('suggestion', e.target.value)} rows={4}
               placeholder="Enter your suggestion..."
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 resize-none" />
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#800020] resize-none" />
           </div>
         </div>
       )}
 
-      <div className="flex gap-3 pt-2 border-t">
-        <button onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold text-sm">Cancel</button>
-        {step > 1 && <button onClick={() => setStep(s => s - 1)} className="px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-1"><ChevronLeft size={14} />Back</button>}
+      {/* Navigation Buttons */}
+      <div className="flex gap-3 pt-3 border-t border-gray-100 safe-bottom">
+        {!isPublic && (
+          <button onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold text-sm active:scale-95 transition-all">Cancel</button>
+        )}
+        {step > 1 && <button onClick={() => setStep(s => s - 1)} className="px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold text-sm flex items-center gap-1 active:scale-95 transition-all"><ChevronLeft size={16} />Back</button>}
         {step < 3
-          ? <button onClick={() => setStep(s => s + 1)} className="flex-1 bg-sky-500 hover:bg-sky-600 text-white py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-1">Next<ChevronRight size={14} /></button>
-          : <button onClick={handleSave} className="flex-1 bg-sky-500 hover:bg-sky-600 text-white py-2.5 rounded-xl font-semibold text-sm shadow-lg">Save Feedback</button>
+          ? <button onClick={() => setStep(s => s + 1)} className="flex-1 bg-[#800020] hover:bg-[#6a001a] text-[#D4AF37] py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1 shadow-lg active:scale-95 transition-all">Next <ChevronRight size={16} /></button>
+          : <button onClick={handleSave} className="flex-1 bg-[#800020] hover:bg-[#6a001a] text-[#D4AF37] py-3 rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-all">✓ Submit Feedback</button>
         }
       </div>
     </div>
@@ -328,55 +331,9 @@ export default function CustomerFeedback({ isPublic = false }) {
       
       if (isPublic) {
         setIsSubmitted(true);
-        setLoading(false);
-        return;
+      } else {
+        fetchData();
       }
-      
-      // Post Link to Sheet Logic (Only for Admin version to generate links)
-      setTimeout(async () => {
-        try {
-          const resp = await fetch(`${sheetUrl}?sheet=Feedback`);
-          const result = await resp.json();
-          if (result.success && result.data) {
-            const rawRows = result.data.slice(6);
-            const latestIndex = rawRows.length + 6; // Row index in sheet
-            const latest = rawRows[rawRows.length - 1];
-            const complaintId = latest[1];
-            
-            const reactBaseUrl = window.location.origin;
-            const completeTaskLink = `${reactBaseUrl}/assigned-complain?id=${complaintId}`;
-            const resolveTaskLink = `${reactBaseUrl}/complain-resolution?id=${complaintId}`;
-            
-            // 1. Update Column Y (25) with Assign Link
-            const updateParamsY = new URLSearchParams({
-              action: 'updateCell',
-              sheetName: 'Feedback',
-              rowIndex: latestIndex.toString(),
-              columnIndex: '25',
-              value: completeTaskLink
-            });
-
-            // 2. Update Column Z (26) with Resolve Link
-            const updateParamsZ = new URLSearchParams({
-              action: 'updateCell',
-              sheetName: 'Feedback',
-              rowIndex: latestIndex.toString(),
-              columnIndex: '26',
-              value: resolveTaskLink
-            });
-
-            await Promise.all([
-              fetch(sheetUrl, { method: 'POST', mode: 'no-cors', body: updateParamsY }),
-              fetch(sheetUrl, { method: 'POST', mode: 'no-cors', body: updateParamsZ })
-            ]);
-            
-            fetchData();
-          }
-        } catch (linkErr) {
-          console.error("Error posting links:", linkErr);
-        }
-      }, 2000);
-
     } catch (err) {
       toast.error("Failed to save feedback");
     } finally {
@@ -402,11 +359,12 @@ export default function CustomerFeedback({ isPublic = false }) {
 
   if (isPublic) {
     return (
-      <div className="min-h-screen bg-[#fdf5e6] flex items-center justify-center p-4">
+      <div className="public-page-wrapper bg-[#fdf5e6] flex flex-col items-center justify-start sm:justify-center px-3 py-4 sm:p-6">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/dark-leather.png')] opacity-5 pointer-events-none" />
         
         {isSubmitted ? (
-          <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full text-center space-y-6 border-2 border-[#D4AF37]/20 relative z-10 animate-reveal">
+          /* ── Thank You Screen ── */
+          <div className="bg-white rounded-3xl shadow-2xl p-8 sm:p-10 max-w-md w-full text-center space-y-6 border-2 border-[#D4AF37]/20 relative z-10 animate-reveal my-auto mx-auto">
             <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
               <MessageSquare size={40} className="text-emerald-600" />
             </div>
@@ -418,33 +376,40 @@ export default function CustomerFeedback({ isPublic = false }) {
             <p className="text-sm text-gray-400">Your response has been recorded successfully.</p>
           </div>
         ) : (
-          <div className="w-full max-w-2xl relative z-10 animate-reveal">
-            <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-[#D4AF37]/10">
-              <div className="px-8 py-6 bg-gradient-to-r from-[#1a0f0f] to-[#4a0808] flex items-center justify-between border-b-2 border-[#D4AF37]">
-                <div className="flex items-center gap-3">
-                  <Wine className="text-[#D4AF37]" size={28} />
-                  <div>
-                    <h2 className="text-white font-serif font-bold text-xl tracking-tight">PUNE WINES</h2>
-                    <p className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-widest">Customer Feedback Form</p>
-                  </div>
+          /* ── Feedback Form Card ── */
+          <div className="w-full max-w-lg relative z-10 animate-reveal my-auto">
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden border border-[#D4AF37]/10">
+              {/* Header */}
+              <div className="px-5 py-4 sm:px-8 sm:py-6 bg-gradient-to-r from-[#1a0f0f] to-[#4a0808] flex items-center gap-3 border-b-2 border-[#D4AF37]">
+                <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center flex-shrink-0">
+                  <Wine className="text-[#D4AF37]" size={22} />
+                </div>
+                <div>
+                  <h2 className="text-white font-serif font-bold text-lg sm:text-xl tracking-tight leading-tight">PUNE WINES</h2>
+                  <p className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-widest">Customer Feedback Form</p>
                 </div>
               </div>
+              {/* Form */}
               <div className="bg-white">
-                <FeedbackForm 
-                  onSave={handleSave} 
-                  onCancel={() => {}} 
-                  defaultStoreId="" 
-                  stores={masterStores} 
+                <FeedbackForm
+                  onSave={handleSave}
+                  onCancel={() => {}}
+                  defaultStoreId=""
+                  stores={masterStores}
+                  isPublic={true}
                 />
               </div>
             </div>
+            {/* Bottom safe-area spacer for iPhone home bar */}
+            <div className="h-6 safe-bottom" />
           </div>
         )}
 
+        {/* Submitting overlay */}
         {loading && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1a0f0f]/40 backdrop-blur-sm">
-            <div className="bg-white p-6 rounded-3xl shadow-2xl flex flex-col items-center gap-4">
-              <Loader2 className="animate-spin text-[#800020]" size={40} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1a0f0f]/50 backdrop-blur-sm">
+            <div className="bg-white px-8 py-7 rounded-3xl shadow-2xl flex flex-col items-center gap-4 mx-4">
+              <Loader2 className="animate-spin text-[#800020]" size={44} />
               <p className="text-[#800020] font-bold text-sm tracking-widest uppercase">Submitting...</p>
             </div>
           </div>

@@ -86,3 +86,30 @@ table th, table td {
 .font-serif {
   font-family: 'Playfair Display', serif;
 }
+
+/* ── iOS / Mobile Fixes ───────────────────────────────────────────────── */
+
+/* Prevent iOS auto-zoom on input focus (font-size must be >= 16px) */
+input, select, textarea {
+  font-size: 16px !important;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Remove tap highlight on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe-area padding for iPhone notch / home indicator */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.public-page-wrapper {
+  min-height: 100svh; /* svh = small viewport height, accounts for iOS browser bars */
+  min-height: -webkit-fill-available;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}

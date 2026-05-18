@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { CheckSquare, X, Clock, CheckCircle, Loader2, RotateCw, Search } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 import { toast } from 'react-hot-toast';
 
 // Dynamic Stores will be fetched from Master sheet
@@ -43,7 +44,7 @@ const HISTORY_COLS = [
   { key: 'summary',          label: 'Summary' },
 ];
 
-function ResolveModal({ row, onSave, onClose, loading, masterData }) {
+function ResolveModal({ row, onSave, onClose, loading, masterData, isPublic = false }) {
   const [form, setForm] = useState({
     resolutionStatus: row.resolutionStatus || 'Solved',
     resolutionDate: row.resolutionDate || new Date().toISOString().split('T')[0],
@@ -83,16 +84,19 @@ function ResolveModal({ row, onSave, onClose, loading, masterData }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md relative">
+    <div className={isPublic ? "bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden border border-[#D4AF37]/10 w-full" : "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"}>
+      <div className={isPublic ? "relative w-full" : "bg-white rounded-2xl shadow-2xl w-full max-w-md relative"}>
         {loading && (
           <div className="absolute inset-0 bg-white/50 z-20 flex items-center justify-center rounded-2xl">
             <Loader2 size={30} className="animate-spin text-sky-500" />
           </div>
         )}
-        <div className="px-6 py-4 bg-sky-500 rounded-t-2xl flex items-center justify-between">
-          <h2 className="text-white font-bold text-base">Resolve Complaint</h2>
-          <button onClick={onClose} className="text-white/80 hover:text-white" disabled={loading}><X size={20} /></button>
+        <div className={`px-6 py-4 rounded-t-2xl flex items-center justify-between ${isPublic ? "bg-gradient-to-r from-[#1a0f0f] to-[#4a0808] border-b border-[#D4AF37]" : "bg-sky-500"}`}>
+          <h2 className="text-white font-bold text-base flex items-center gap-2">
+            <CheckSquare className={isPublic ? "text-[#D4AF37]" : "text-white"} size={20} />
+            Resolve Complaint
+          </h2>
+          {!isPublic && <button onClick={onClose} className="text-white/80 hover:text-white" disabled={loading}><X size={20} /></button>}
         </div>
         <div className="p-6 space-y-4">
           <div className="bg-emerald-50 rounded-lg p-3 text-sm">
@@ -140,8 +144,8 @@ function ResolveModal({ row, onSave, onClose, loading, masterData }) {
           </div>
         </div>
         <div className="px-6 pb-6 flex gap-3">
-          <button onClick={onClose} disabled={loading} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold text-sm transition-colors">Cancel</button>
-          <button onClick={handleSave} disabled={loading} className="flex-1 bg-sky-500 hover:bg-sky-600 text-white py-2.5 rounded-xl font-semibold text-sm shadow transition-colors flex items-center justify-center gap-2">
+          {!isPublic && <button onClick={onClose} disabled={loading} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold text-sm transition-colors">Cancel</button>}
+          <button onClick={handleSave} disabled={loading} className={`flex-1 py-2.5 rounded-xl font-semibold text-sm shadow transition-colors flex items-center justify-center gap-2 ${isPublic ? "bg-[#800020] hover:bg-[#6a001a] text-[#D4AF37]" : "bg-sky-500 hover:bg-sky-600 text-white"}`}>
             {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
             Complete
           </button>
@@ -201,6 +205,8 @@ function DataTable({ cols, rows, actionCol, loading }) {
 }
 
 export default function ComplainResolution() {
+  const { isAuthenticated } = useAuthStore();
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [allData, setAllData] = useState([]);
   const [masterData, setMasterData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -305,19 +311,20 @@ export default function ComplainResolution() {
   }, [sheetUrl]);
 
   useEffect(() => {
-    fetchData().then(() => {
-      // Handle ID parameter from URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const idParam = urlParams.get('id');
-      if (idParam) {
-        setAllData(currentData => {
-          const match = currentData.find(d => d.complaintId === idParam);
-          if (match) setResolveModal(match);
-          return currentData;
-        });
-      }
-    });
+    fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    // Handle ID parameter from URL once data is loaded
+    const urlParams = new URLSearchParams(window.location.search);
+    const idParam = urlParams.get('id');
+    if (idParam && allData.length > 0) {
+      const match = allData.find(d => d.complaintId === idParam);
+      if (match) {
+        setResolveModal(match);
+      }
+    }
+  }, [allData]);
 
   const pending = useMemo(() => allData.filter(d => d.planned1 && !d.actual1), [allData]);
   const history = useMemo(() => allData.filter(d => d.planned1 && d.actual1), [allData]);
@@ -369,7 +376,11 @@ export default function ComplainResolution() {
       await Promise.all(promises);
       toast.success("Complaint resolved successfully");
       setResolveModal(null);
-      setTimeout(fetchData, 1500);
+      if (!isAuthenticated) {
+        setIsSubmitted(true);
+      } else {
+        setTimeout(fetchData, 1500);
+      }
     } catch (err) {
       console.error("Update error:", err);
       toast.error("Failed to resolve complaint");
@@ -377,6 +388,46 @@ export default function ComplainResolution() {
       setLoading(false);
     }
   };
+
+  if (!isAuthenticated) {
+    if (isSubmitted) {
+      return (
+        <div className="bg-white rounded-3xl shadow-2xl p-8 sm:p-10 text-center space-y-6 border-2 border-[#D4AF37]/20 relative z-10 w-full animate-reveal mx-auto my-auto max-w-md">
+          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle size={40} className="text-emerald-600" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-serif font-bold text-gray-800">Task Completed!</h2>
+            <p className="text-gray-500 font-medium italic">The complaint resolution has been successfully updated.</p>
+          </div>
+          <div className="h-[2px] w-16 bg-[#D4AF37] mx-auto" />
+          <p className="text-sm text-gray-400">You may now close this window.</p>
+        </div>
+      );
+    }
+    if (loading && allData.length === 0) {
+      return (
+        <div className="bg-white rounded-3xl shadow-2xl p-8 text-center space-y-4 max-w-sm mx-auto">
+          <Loader2 size={36} className="animate-spin text-[#800020] mx-auto" />
+          <p className="text-[#800020] font-bold text-sm tracking-widest uppercase animate-pulse">Loading Details...</p>
+        </div>
+      );
+    }
+    if (!resolveModal) {
+      return (
+        <div className="bg-white rounded-3xl shadow-2xl p-8 text-center space-y-4 max-w-sm mx-auto border-2 border-red-500/20">
+          <X size={40} className="text-red-500/60 mx-auto" />
+          <p className="text-gray-700 font-bold text-base">Invalid or Missing Complaint ID</p>
+          <p className="text-xs text-gray-400">Please make sure you used the complete link sent to you.</p>
+        </div>
+      );
+    }
+    return (
+      <div className="w-full max-w-md mx-auto">
+        <ResolveModal row={resolveModal} loading={loading} masterData={masterData} onSave={handleUpdate} onClose={() => {}} isPublic={true} />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 h-full flex flex-col gap-4">
